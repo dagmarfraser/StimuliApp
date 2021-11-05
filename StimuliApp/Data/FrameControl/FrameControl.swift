@@ -3,7 +3,17 @@
 
 import Foundation
 import AVFoundation
+import Metal
 
+// Define a protocol extension to handle presentedTime safely
+extension MTLDrawable {
+    var safePresentedTime: CFTimeInterval {
+        if let caMetalDrawable = self as? CAMetalDrawable {
+            return CACurrentMediaTime()
+        }
+        return 0
+    }
+}
 // DEBUG MODE
 // make debug = true in FrameControl class to get a print of the timings of all frames
 
@@ -112,18 +122,16 @@ class FrameControl {
     }
 
     var initSceneTimeReal: Double {
-        #if targetEnvironment(macCatalyst)
-        if #available(macCatalyst 13.4, *) {
-//            we should use presentedTime but it is not working always, apple bug
-//            return initSceneDrawable?.presentedTime ?? 0
-            return initSceneTime + Constants.delayResponse
-        } else {
-            return initSceneTime + Constants.delayResponse
-        }
-        #else
-        return initSceneDrawable?.presentedTime ?? 0
-        #endif
-    }
+         #if targetEnvironment(macCatalyst)
+         if #available(macCatalyst 13.4, *) {
+             return initSceneDrawable?.safePresentedTime ?? 0
+         } else {
+             return initSceneTime + Constants.delayResponse
+         }
+         #else
+         return initSceneDrawable?.safePresentedTime ?? 0
+         #endif
+     }
 
     var totalFrames: Int {
         return max(allFrames, 1)
@@ -173,23 +181,23 @@ class FrameControl {
         numberOfFrames = 0
         diff = 0
 
-        #if targetEnvironment(macCatalyst)
-        if #available(macCatalyst 13.4, *) {
-            if previousDrawables.count == 5 {
-                lastDrawableTime = previousDrawables[2].presentedTime
-                if lastDrawableTime > 1 {
-                    diff = drawTime - lastDrawableTime
-                }
-            }
-        }
-        #else
-        if previousDrawables.count == 5 {
-            lastDrawableTime = previousDrawables[2].presentedTime
-            if lastDrawableTime > 1 {
-                diff = drawTime - lastDrawableTime
-            }
-        }
-        #endif
+#if targetEnvironment(macCatalyst)
+   if #available(macCatalyst 13.4, *) {
+       if previousDrawables.count == 5 {
+           lastDrawableTime = previousDrawables[2].safePresentedTime
+           if lastDrawableTime > 1 {
+               diff = drawTime - lastDrawableTime
+           }
+       }
+   }
+   #else
+   if previousDrawables.count == 5 {
+       lastDrawableTime = previousDrawables[2].safePresentedTime
+       if lastDrawableTime > 1 {
+           diff = drawTime - lastDrawableTime
+       }
+   }
+   #endif
 
         delay = constantDelay - diff
 

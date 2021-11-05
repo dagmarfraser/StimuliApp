@@ -248,15 +248,17 @@ extension Renderer: MTKViewDelegate {
 
         commandEncoder.endEncoding()
 
-        #if targetEnvironment(macCatalyst)
-        commandBuffer.present(drawable)
-        #else
-        if Flow.shared.settings.frameRate == Flow.shared.settings.maximumFrameRate {
-            commandBuffer.present(drawable)
-        } else {
-            commandBuffer.present(drawable, afterMinimumDuration: Double(Flow.shared.settings.delta) - 0.001)
-        }
-        #endif
+#if targetEnvironment(macCatalyst)
+commandBuffer.present(drawable)
+#else
+if Flow.shared.settings.frameRate == Flow.shared.settings.maximumFrameRate {
+    commandBuffer.present(drawable)
+} else {
+    // Calculate presentation time based on current time plus desired duration
+    let presentationTime = CACurrentMediaTime() + Double(Flow.shared.settings.delta) - 0.001
+    commandBuffer.present(drawable, atTime: presentationTime)
+}
+#endif
 
         Flow.shared.frameControl.updateCommitTime(drawable: drawable)
 
